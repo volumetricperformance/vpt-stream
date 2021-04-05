@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>vpt-stream example of consuming stream in threejs </title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>
+		body {
+			background: #000;
+			color: #fff;
+			padding: 0;
+			margin: 0;
+			overflow: hidden;
+			font-family: georgia;
+			text-align: center;
+		}
+
+		video
+		{
+			position: fixed;
+			z-index: 100;
+			top: 0; left: 0;
+			width: 10%;
+		}
+
+		a {
+			color: skyblue;
+			text-decoration: none
+		}
+
+		#info {
+			position: absolute;
+			width: 100%;
+		}
+		#depthkit-video{
+			position:absolute;
+			top: 0; left: 0;
+			width: 20%;
+		}
+		#error {
+			color: rgb(255, 80, 80);
+			background-color: rgba(0,0,0,0.5);
+			
+			width: 100%;
+
+		}
+	</style>
+</head>
+
+<body>
+
+	<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+	<!--Three.js-->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r123/three.min.js"></script>
+	<!-- Orbit Controls -->
+	<script src="lib/OrbitControls.js"></script>
+	<!--Depthkit.js-->
+	<script src="../build/vptstream.js"></script>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+
+    <div id="info">
+		Volumnetric Stream example, assumes HLS stream and stacked RGB+D textures
+		<div id="error"></div>
+    </div>
+	<script>
+
+		if (Hls.isSupported()) {
+			var hlstmp = new Hls();
+		}
+		//Some general Three.js components
+		var renderer,
+		scene,
+		camera,
+		controls;
+
+		var depthkit;
+		var dkstream;
+
+		function showError(err){
+			document.getElementById("error").innerHTML = err;
+		}
+
+		var doRender = true;
+
+		init();
+
+		function xhr_override_test (xhr, u){
+			console.log(`xhr_override_test ${u}`);
+			xhr.open("GET", u);
+          }
+
+		async function init() {
+
+			//Setup renderer
+			renderer = new THREE.WebGLRenderer();
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+			// Setup scene
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color( 0x282828 );
+			scene.fog = new THREE.Fog( 0x282828, 0.0, 10.0 );
+
+			// Setup camera
+			camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, .01, 20 );
+			camera.position.set( 0, 2, -3 );
+
+			// Setup controls
+			controls = new THREE.OrbitControls( camera, renderer.domElement );
+			controls.target.set(0, 0.75, 0);
+			camera.lookAt(controls.target);
+
+			const params = {
+				videoPath: "http://localhost:8080/live/vpt/index.m3u8",
+				renderMode : "perspective",
+				startat: 0.0,
+				pointSize: 8.0,				
+				depthMin: 0.1,
+				depthMax: 4.0,
+				scale: 1.0,
+				textureWidth: 320,
+				textureHeight: 240,
+				thresholdMinX: -2.0,
+				thresholdMaxX: 2.0,
+				thresholdMinY: -2.0,
+				thresholdMaxY: 2.0,
+				thresholdMinZ: 0.0,
+				thresholdMaxZ: 4.0,
+				render: true,				
+				load: function() { 
+					load( params ); 
+				},
+			}
+
+			const gui = new dat.GUI();
+			
+			gui.remember(params);
+
+			gui.add(params, "videoPath");
+			gui.add(params, "renderMode", [ "perspective", "perspective_rl2", "cutout", "ortho" ] );
+			gui.add(params, "startat").onChange(
+				(newValue) => {
+					update("startat", newValue);
+				});
+
+			gui.add(params, "pointSize").min(1).max(20).step(1).onChange(
+				(newValue) => {
+					update("pointSize", newValue);
+				});
+			gui.add(params, "scale").min(0).max(5).step(0.1).onChange(
+				(newValue) => {
+					update("scale", newValue);
+				});
+
+			const thresholdParams = ["thresholdMinX","thresholdMaxX","thresholdMinY","thresholdMaxY","thresholdMinZ","thresholdMaxZ"]	
+			
+			thresholdParams.forEach(element => {
+				gui.add(params, element).min(-4.0).max(4.0).step(0.01).onChange(
+				(newValue) => {
+					updateThreshold(element, newValue, params);
+				});
+			});
+
+			gui.add(params, "textureWidth");
+			gui.add(params, "textureHeight");
+			gui.add(params, "load").name('Load');
+			gui.add(params, "render").listen().onChange( function(value)
+			{
+				console.log("Render:" +value);
+				toggle();
+
+			});
+
+	
+
+			// A grid helper as a floor reference
+			var gridHelper = new THREE.GridHelper( 50, 50 );
+			scene.add(gridHelper);
+
+			vptstream = new VPTStream();
+			//vptstream.hls_xhroverride = xhr_override_test;
+			
+			document.body.appendChild(vptstream.video);
+
+			vptstream.addEventListener( VPTStream.STREAMEVENTS.PLAY_SUCCESS, function ( event ) { 
+				console.log( `${event.type} ${event.message}` );
+			} );
+
+			vptstream.addEventListener( VPTStream.STREAMEVENTS.PLAY_ERROR, function ( event ) { 
+				console.log( `${event.type} ${event.message}` );
+			} );
+
+		
+			scene.add(vptstream);
+
+
+			const axesHelper = new THREE.AxesHelper( 5 );
+			scene.add( axesHelper );
+			
+			window.addEventListener( 'resize', onWindowResize, false );
+
+			render();
+
+		}
+
+		function update( param, value ){
+			if( param == "scale")
+			{
+				const ratio = vptstream.scale.x / vptstream.scale.y;
+				vptstream.scale.set( value * ratio,value, value);
+			}
+			vptstream.updateParameter( param, value);
+		}
+
+		function updateThreshold( param, value, params ){
+			const min = new THREE.Vector3(params.thresholdMinX, params.thresholdMinY, params.thresholdMinZ );
+			const max = new THREE.Vector3(params.thresholdMaxX, params.thresholdMaxY, params.thresholdMaxZ );
+			vptstream.updateParameter( "thresholdMin", min);
+			vptstream.updateParameter( "thresholdMax", max);
+		}
+		
+		async function load( params ){
+			console.log(`load ${params}`);
+			
+			let url = params.videoPath;
+			fileExtension = url.substr((url.lastIndexOf('.') + 1));
+
+			console.log(fileExtension);
+			if( fileExtension != "m3u8"){
+				try {
+					url = await fetch (url);
+					url = await url.text();
+				
+				} catch (error) {
+					// show error
+					showError( error.message );
+				}
+			}
+		
+			params.videoPath = url;
+			params.meta = {	
+				"depthFocalLength" : {
+					"x" : 639.294,
+					"y" : 639.294
+				},
+				"depthImageSize" : {
+					"x" : 640,
+					"y" : 480
+				},
+				"depthPrincipalPoint" : {
+					"x" : 331.706,
+					"y" : 236.211
+				}	 
+			}
+			
+			const min = new THREE.Vector3(params.thresholdMinX, params.thresholdMinY, params.thresholdMinZ );
+			const max = new THREE.Vector3(params.thresholdMaxX, params.thresholdMaxY, params.thresholdMaxZ );
+			
+			params.thresholdMin = min;
+			params.thresholdMax = max;
+
+			vptstream.load( params );
+
+		}
+
+		function toggle( )
+		{
+			doRender = !doRender;
+		}
+
+		function render() {
+
+			if( doRender){
+				renderer.render( scene, camera );
+			}
+			
+			requestAnimationFrame( render );
+		}
+
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+		}
+
+	</script>
+
+</body>
+
+</html>
