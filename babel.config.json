@@ -1,8 +1,0 @@
-{
-    "presets": [
-        "@babel/preset-env"
-    ],
-    "plugins": [
-        [ "import-to-require", { "modules": [ "glslify" ] } ]
-      ]
-}

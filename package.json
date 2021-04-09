@@ -2,11 +2,9 @@
   "name": "vpt-stream",
   "version": "1.0.0",
   "description": "threejs component for visualizing live volumentric performance stream",
-  "main": "src/vptstream.js",
+  "main": "build/vptstream.js",
   "scripts": {
-    "start": "concurrently \"http-server -s --cors\" \"watchify -d -v -t [ babelify --global ] --exclude hls.js src/vptstream.js --standalone VPTStream -o build/vptstream.js\" \"node nms/app.js\"",
-    "build": "browserify src/vptstream.js -t [ babelify --global ] --exclude hls -o build/vptstream.min.js",
-    "test": "npm run build"
+    "start": "concurrently \"http-server -s --cors\" \"npx webpack\" \"node nms/app.js\""
   },
   "repository": {
     "type": "git",
@@ -26,25 +24,17 @@
   },
   "homepage": "https://github.com/volumetricperformance/vpt-stream#readme",
   "devDependencies": {
-    "@babel/core": "^7.3.3",
-    "@babel/preset-env": "^7.9.0",
-    "babel-plugin-import-to-require": "^1.0.0",
-    "babelify": "^10.0.0",
-    "browserify": "^17.0.0",
     "concurrently": "^6.0.0",
     "fsevents": "^2.3.2",
+    "glslify": "^7.1.1",
     "hls.js": "^0.14.16",
     "http-server": "^0.12.3",
     "node-media-server": "^2.2.4",
-    "watchify": "^4.0.0"
+    "webpack": "^5.31.2",
+    "webpack-cli": "^4.6.0",
+    "webpack-glsl-loader": "^1.0.1"
   },
   "dependencies": {
-    "three": "git+https://github.com/MozillaReality/three.js.git#0f9b0024725f0dd917caa54c2934a4ba1fc12c4f",
-    "glslify": "^7.1.1"
-  },
-  "browserify": {
-    "transform": [
-      "glslify"
-    ]
+    "three": "git+https://github.com/MozillaReality/three.js.git#0f9b0024725f0dd917caa54c2934a4ba1fc12c4f"  
   }
 }

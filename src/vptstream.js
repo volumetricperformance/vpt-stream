@@ -1,14 +1,16 @@
+//VPTStream 
 
-const glsl = require('glslify');
+//NOTE on GLSL
+//we use webpack-glsl-loader to include the shaders (https://github.com/grieve/webpack-glsl-loader#readme)
+//which in turn depends on glslify (https://github.com/glslify/glslify)
+const rgbdFrag = require('./shaders/perspective.frag');
+const rgbdVert = require('./shaders/perspective.vert');
 
-const rgbdFrag = glsl.file('./shaders/perspective.frag');
-const rgbdVert = glsl.file('./shaders/perspective.vert');
+const orthoFrag = require('./shaders/ortho.frag');
+const orthoVert = require('./shaders/ortho.vert');
 
-const orthoFrag = glsl.file('./shaders/ortho.frag');
-const orthoVert = glsl.file('./shaders/ortho.vert');
-
-const cutoutFrag = glsl.file('./shaders/cutout.frag');
-const cutoutVert = glsl.file('./shaders/cutout.vert');
+const cutoutFrag = require('./shaders/cutout.frag');
+const cutoutVert = require('./shaders/cutout.vert');
 
 const HLS_TIMEOUT = 2500;
 
