@@ -2,7 +2,7 @@
   "name": "vpt-stream",
   "version": "1.0.0",
   "description": "threejs component for visualizing live volumentric performance stream",
-  "main": "src/vpt-stream.js",
+  "main": "src/vptstream.js",
   "scripts": {
     "start": "concurrently \"http-server -s --cors\" \"watchify -d -v -t [ babelify --global ] --exclude hls.js src/vptstream.js --standalone VPTStream -o build/vptstream.js\" \"node nms/app.js\"",
     "build": "browserify src/vptstream.js -t [ babelify --global ] --exclude hls -o build/vptstream.min.js",
