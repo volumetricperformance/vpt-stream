@@ -1,6 +1,6 @@
 {
   "name": "vpt-stream",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "threejs component for visualizing live volumentric performance stream",
   "main": "build/vptstream.js",
   "scripts": {
@@ -27,7 +27,6 @@
     "concurrently": "^6.0.0",
     "fsevents": "^2.3.2",
     "glslify": "^7.1.1",
-    "hls.js": "^0.14.16",
     "http-server": "^0.12.3",
     "node-media-server": "^2.2.4",
     "webpack": "^5.31.2",
@@ -35,6 +34,7 @@
     "webpack-glsl-loader": "^1.0.1"
   },
   "dependencies": {
-    "three": "git+https://github.com/MozillaReality/three.js.git#0f9b0024725f0dd917caa54c2934a4ba1fc12c4f"  
+    "three": "git+https://github.com/MozillaReality/three.js.git#0f9b0024725f0dd917caa54c2934a4ba1fc12c4f",
+    "hls.js": "^0.14.16"
   }
 }
