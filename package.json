@@ -34,7 +34,7 @@
     "webpack-glsl-loader": "^1.0.1"
   },
   "dependencies": {
-    "three": "git+https://github.com/MozillaReality/three.js.git#0f9b0024725f0dd917caa54c2934a4ba1fc12c4f",
-    "hls.js": "^0.14.16"
+    "three": "github:mozillareality/three.js#hubs/master",
+    "hls.js": "^1.0.3"
   }
 }
