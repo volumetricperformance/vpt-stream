@@ -59,6 +59,11 @@ class VPTStream extends THREE.Object3D {
     this.playing = false;
     this.meshScalar = 2;
     this.params = {}
+
+    // Set param defaults
+    for (const property in schema) {
+      this.params[property] = schema[property].default;
+    }
   }
 
   static get STREAMEVENTS() {
@@ -85,6 +90,13 @@ class VPTStream extends THREE.Object3D {
     }
 
   }
+
+  updateParameters(params) {
+    for (const property in params) {
+      console.log(`${property} value:${params[property]}`);
+      this.params[property] = params[property];
+    }
+  }
  
   load(params) 
   {
@@ -95,14 +107,16 @@ class VPTStream extends THREE.Object3D {
       this.params[property] = params.hasOwnProperty(property) ? params[property] : schema[property].default;
     }
 
-    if( this.params.meta.hasOwnProperty("depthFocalLength") ){
-      this.setProps( this.params.meta );
-    }else{
-      console.error("invalid meta data for perspective rendering, default to cutout");
-      this.params.renderMode = "cutout"
-    }
+    this.setProps( this.params.meta );
 
-    //so far we have not had to use custom extrinsice for Azure Kinect or Realsense
+    this.startVideo(this.params.videoPath);
+
+    this.setupGeometry();
+  }
+
+  setupGeometry()
+  {
+    //so far we have not had to use custom extrinsics for Azure Kinect or Realsense
     //default could suffice as the alignment is done upstream, when we grab if from the sensor
     //leaving this here to allow for textures that still need alignment 
     const extrinsics = new THREE.Matrix4();
@@ -123,8 +137,6 @@ class VPTStream extends THREE.Object3D {
         this.remove(child);
       }
     }
-
-    this.startVideo(this.params.videoPath);
 
     let geometry = new THREE.PlaneBufferGeometry(1, 1, this.params.textureSize.w,  this.params.textureSize.h);
     
@@ -384,6 +396,39 @@ class VPTStream extends THREE.Object3D {
     }
   }
 
+  setMediaStream(mediaStream, params = null)
+  {
+    console.log("vptstream setMediaStream");
+
+    if (params) {
+      for (const property in schema) {
+        console.log(`${property} value:${params[property]} default:${schema[property].default}`);
+        this.params[property] = params.hasOwnProperty(property) ? params[property] : schema[property].default;
+      }
+    }
+
+    this.setProps( this.params.meta );
+
+    const _this = this;
+    this.video.srcObject = mediaStream;
+    this.video.play().then(function () {
+        _this.dispatchEvent({ type: STREAMEVENTS.PLAY_SUCCESS, message: "autoplay success" });
+    }).catch(function (error) {
+        _this.dispatchEvent({ type: STREAMEVENTS.PLAY_ERROR, message: "autoplay error" });
+        console.log("error autoplay", data);
+    });
+
+    /* Recreate the texture to match the video */
+    if (this.texture) {
+      this.texture.dispose();
+    }
+    this.texture = new THREE.VideoTexture(this.video);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.LinearFilter;
+
+    this.setupGeometry();
+  }
+
   //load depth camera properties for perspective reprojection
   loadPropsFromFile(filePath) {
     return new Promise((resolve, reject) => {
@@ -400,6 +445,12 @@ class VPTStream extends THREE.Object3D {
   //set perspective projection properties
   setProps(_props) {
     this.props = _props;
+
+    if (!this.props.hasOwnProperty("depthFocalLength") ){
+      console.error("invalid meta data for perspective rendering, default to cutout");
+      this.params.renderMode = "cutout"
+    }
+
     if (this.props.textureWidth == undefined || this.props.textureHeight == undefined) {
       this.props.textureWidth = this.props.depthImageSize.x;
       this.props.textureHeight = this.props.depthImageSize.y * 2;
